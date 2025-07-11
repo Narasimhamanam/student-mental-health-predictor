@@ -1,31 +1,66 @@
-import pandas as pd
+import streamlit as st
 import numpy as np
 import pickle
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
 
-# Generate synthetic dataset
-np.random.seed(42)
-n = 614
-data = {
-    "SleepHours": np.random.normal(6.5, 1.5, n).clip(0, 12),
-    "ScreenTime": np.random.normal(5, 2, n).clip(0, 12),
-    "StressLevel": np.random.randint(1, 6, n),
-    "SocialActivity": np.random.randint(0, 8, n),
-    "Grades": np.random.choice(["A", "B", "C", "D", "F"], size=n, p=[0.25, 0.3, 0.25, 0.15, 0.05])
-}
-df = pd.DataFrame(data)
-df["MentalHealthRisk"] = ((df["SleepHours"] < 5) & (df["StressLevel"] > 3) & (df["ScreenTime"] > 6)).astype(int)
-df["GradesEncoded"] = df["Grades"].map({"A": 4, "B": 3, "C": 2, "D": 1, "F": 0})
+# Load model
+model = pickle.load(open("mental_health_model.pkl", "rb"))
 
-# Split and train
-X = df[["SleepHours", "ScreenTime", "StressLevel", "SocialActivity", "GradesEncoded"]]
-y = df["MentalHealthRisk"]
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# App Title and Layout
+st.set_page_config(page_title="Mental Health Predictor", page_icon="🧠", layout="centered")
 
-model = LogisticRegression()
-model.fit(X_train, y_train)
+st.markdown("""
+    <h2 style='text-align: center; color: #4CAF50;'>🧠 Student Mental Health Risk Predictor</h2>
+    <p style='text-align: center;'>Predict your mental health risk based on lifestyle and academic habits.</p>
+    <hr style='border: 1px solid #ddd;' />
+""", unsafe_allow_html=True)
 
-# Save the model
-pickle.dump(model, open("mental_health_model.pkl", "wb"))
-print("✅ Model saved as mental_health_model.pkl")
+# Input fields with columns
+col1, col2 = st.columns(2)
+
+with col1:
+    sleep = st.slider("😴 Sleep Hours (per day)", 0.0, 12.0, 6.5, 0.5)
+    screen = st.slider("📱 Screen Time (hours/day)", 0.0, 12.0, 5.0, 0.5)
+    stress = st.slider("💢 Stress Level", 1, 5, 3)
+
+with col2:
+    social = st.slider("🎯 Social Activity (events/week)", 0, 10, 3)
+    grade = st.selectbox("🎓 Your Grade", ["A", "B", "C", "D", "F"])
+
+# Mapping grade
+grade_map = {"A": 4, "B": 3, "C": 2, "D": 1, "F": 0}
+grade_encoded = grade_map[grade]
+
+# Predict button
+st.markdown("<br>", unsafe_allow_html=True)
+if st.button("🚀 Predict Mental Health Risk"):
+    input_data = np.array([[sleep, screen, stress, social, grade_encoded]])
+    prediction = model.predict(input_data)[0]
+
+    if prediction == 1:
+        st.markdown("""
+            <div style='
+                background-color:#ffe6e6;
+                padding:20px;
+                border-radius:10px;
+                border-left:5px solid red;'>
+                <h4 style='color:#cc0000;'>⚠️ High Mental Health Risk Detected!</h4>
+                <p>Please consider reaching out to a counselor or mental health professional.</p>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+            <div style='
+                background-color:#e6ffe6;
+                padding:20px;
+                border-radius:10px;
+                border-left:5px solid green;'>
+                <h4 style='color:#006600;'>✅ Low Mental Health Risk</h4>
+                <p>You're doing well! Keep maintaining a healthy balance of habits.</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+# Footer
+st.markdown("""
+    <br><hr>
+    <p style='text-align: center; font-size: 13px; color: #888;'>Made By ❤️ Narasimha Manam</p>
+""", unsafe_allow_html=True)
